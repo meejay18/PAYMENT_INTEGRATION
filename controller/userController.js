@@ -35,3 +35,69 @@ exports.createUser = async (req, res) => {
     })
   }
 }
+exports.getAllUsers = async (req,res)=>{
+
+
+  try {
+    const allusers = await userModel.find()
+
+    res.status(200).json({
+      message:'Get All users successfully',
+      data:allusers
+    })
+    
+  } catch (error) {
+    res.status(500).json({
+      message:error.message
+    })
+  }
+}
+exports.getOne = async (req,res)=>{
+
+  try {
+    const {userId} = req.params;
+    const user = await userModel.findById(userId)
+    if (!user) {
+      return res.status(400).json({
+        message:'user already exist'
+      })
+    };
+
+    res.status(200).json({
+      message:'Get one user successfully',
+      data:user
+    })
+  } catch (error) {
+    res.status(500).json({
+      message:error.message
+    })
+  }
+}
+exports.updateUser = async (req,res)=>{
+  try {
+    const {userId} = req.params;
+    const{firstName,lastName,email,password} = req.body
+    const user = await userModel.findById(userId)
+    if (!user) {
+      return res.status(404).json({
+        message:'user not found'
+      })
+    }
+    const data = ({
+      firstName,
+      lastName,
+      email:email.toLowerCase(),
+      password
+    })
+    const updatedUser = await userModel.findByIdAndUpdate(userId,data, {new:true})
+
+    return res.status(200).json({
+      message:'User updated successfully',
+      data:updatedUser
+    })
+  } catch (error) {
+    res.status(500).json({
+      message:error.message
+    })
+  }
+}
