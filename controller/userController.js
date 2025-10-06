@@ -35,91 +35,128 @@ exports.createUser = async (req, res) => {
     })
   }
 }
-exports.getAllUsers = async (req,res)=>{
-
-
+exports.getAllUsers = async (req, res) => {
   try {
     const allusers = await userModel.find()
 
     res.status(200).json({
-      message:'Get All users successfully',
-      data:allusers
+      message: 'users retrieved successfully',
+      data: allusers,
     })
-    
   } catch (error) {
     res.status(500).json({
-      message:error.message
+      message: error.message,
     })
   }
 }
-exports.getOne = async (req,res)=>{
-
+exports.getOne = async (req, res) => {
   try {
-    const {userId} = req.params;
+    const { userId } = req.params
     const user = await userModel.findById(userId)
     if (!user) {
       return res.status(400).json({
-        message:'user already exist'
+        message: 'user does not exist',
       })
-    };
+    }
 
     res.status(200).json({
-      message:'Get one user successfully',
-      data:user
+      message: 'Get one user successfully',
+      data: user,
     })
   } catch (error) {
     res.status(500).json({
-      message:error.message
+      message: error.message,
     })
   }
 }
-exports.updateUser = async (req,res)=>{
+exports.updateUser = async (req, res) => {
   try {
-    const {userId} = req.params;
-    const{firstName,lastName,email,password} = req.body
+    const { userId } = req.params
+    const { firstName, lastName, email, password } = req.body
     const user = await userModel.findById(userId)
     if (!user) {
       return res.status(404).json({
-        message:'user not found'
+        message: 'user not found',
       })
     }
-    const data = ({
+    const data = {
       firstName,
       lastName,
-      email:email.toLowerCase(),
-      password
-    })
-    const updatedUser = await userModel.findByIdAndUpdate(userId,data, {new:true})
+      email: email.toLowerCase(),
+      password,
+    }
+    const updatedUser = await userModel.findByIdAndUpdate(userId, data, { new: true })
 
     return res.status(200).json({
-      message:'User updated successfully',
-      data:updatedUser
+      message: 'User updated successfully',
+      data: updatedUser,
     })
   } catch (error) {
     res.status(500).json({
-      message:error.message
+      message: error.message,
     })
   }
 }
- exports.changePassword = async (req,res)=>{
+
+exports.loginUser = async (req, res) => {
+  const { email, password } = req.body
+  try {
+    const user = await userModel.findOne({ email: email.toLowerCase() })
+
+    if (!user) {
+      return res.status(404).json({
+        message: 'user not found',
+      })
+    }
+
+    const checkPassword = await bcrypt.compare(password, user.password)
+    if (!checkPassword) {
+      return res.status(400).json({
+        message: 'Invalid password',
+      })
+    }
+
+    // if (user.isVerified === false) {
+    //   return res.status(401).json({
+    //     message: 'please verify your account before logging in',
+    //   })
+    // }
+
+    const token = jwt.sign({ id: user._id, email: user.email }, process.env.JWT_SECRET, {
+      expiresIn: '30mins',
+    })
+
+    return res.status(200).json({
+      message: 'login successfull',
+      data: user,
+      token: token,
+    })
+  } catch (error) {
+    return res.status(500).json({
+      message: 'Error logging in user',
+      error: error.message,
+    })
+  }
+}
+exports.changePassword = async (req, res) => {
   try {
     const decodedId = req.user.id
-    const {oldPassword, newPassword, confirmPassword} = req.body
+    const { oldPassword, newPassword, confirmPassword } = req.body
     const user = await userModel.findById(decodedId)
     if (!user) {
       return req.status(404).json({
-        message: `user not found`
+        message: `user not found`,
       })
     }
     const check = await bcrypt.compare(oldPassword, user.password)
     if (!check) {
       return req.status(404).json({
-        message: `old password is incorrect`
+        message: `old password is incorrect`,
       })
     }
     if (newPassword !== confirmPassword) {
       return res.status(400).json({
-        message: `password mismatch`
+        message: `password mismatch`,
       })
     }
     const salt = bcrypt.genSalt(10)
@@ -128,11 +165,11 @@ exports.updateUser = async (req,res)=>{
     user.password = hashedPassword
     await user.save()
     res.status(200).json({
-      message: `change password successfully`
+      message: `change password successfully`,
     })
   } catch (error) {
     res.status(500).json({
-      message:error.message
+      message: error.message,
     })
   }
- }
+}

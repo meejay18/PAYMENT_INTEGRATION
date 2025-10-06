@@ -1,6 +1,6 @@
 const express = require('express')
 require('./config/database')
-const PORT = process.env.PORT || 6788
+const PORT = process.env.PORT
 const app = express()
 app.use(express.json())
 
