@@ -35,6 +35,43 @@ exports.createUser = async (req, res) => {
     })
   }
 }
+
+exports.verifyUser = async (req, res)=>{
+  try{
+const {token} = req.params
+if (!token) {
+  return res.status(400).json({
+    message: "Token not found"
+  })
+}
+const decoded = jwt.verify(token, process.env.JWT_SECRET)
+const user = await userModel.findOne(decoded.id)
+if (!user){
+  return res.status(400).json({
+    message: "User not found"
+  })
+}
+if (user.isVerified){
+  return res.status(400).json({
+    message: "User already verified, please proceed to login"
+  })
+}
+user.isVerified = true
+await user.save()
+
+res.status(200).json({
+  message: "User verified successfully"
+})
+} catch (error){
+    if (error instanceof jwt.JsonWebTokenError){
+      return res.status(500).json({
+        message: "Session expired, please resend verification"
+      })
+    }
+  }
+}
+
+
 exports.getAllUsers = async (req, res) => {
   try {
     const allusers = await userModel.find()
