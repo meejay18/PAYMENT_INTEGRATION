@@ -47,16 +47,16 @@ exports.createUser = async (req, res) => {
 
 exports.verifyUser = async (req, res) => {
   try {
-    const { token } = req.params;
-
+    const { token } = params;
     if (!token) {
       return res.status(404).json({
         message: "Token not found",
       });
     }
 
-    const decoded = await jwt.verify(token, process.env.JWT_SECRET);
-    const user = await userModel.findById(decoded.id);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await userModel.findOne(decoded.id);
+
     if (!user) {
       return res.status(404).json({
         message: "User not found",
@@ -64,11 +64,9 @@ exports.verifyUser = async (req, res) => {
     }
 
     if (user.isVerified) {
-      return res.status(
-        (400).json({
-          message: "User already verified, please proceed to login",
-        })
-      );
+      return res.status(400).json({
+        message: "User already verified",
+      });
     }
 
     user.isVerified = true;
@@ -80,10 +78,110 @@ exports.verifyUser = async (req, res) => {
   } catch (error) {
     if (error instanceof jwt.TokenExpiredError) {
       return res.status(500).json({
-        message: "Time out, resend verification",
+        message: "Time out, please proceed to login.",
       });
     }
-    return res.status(500).json({
+    res.status(500).json({
+      message: error.message,
+    });
+  }
+};
+
+exports.getAllUsers = async (req, res) => {
+  try {
+    const allusers = await userModel.find();
+
+    res.status(200).json({
+      message: "Get All users successfully",
+      data: allusers,
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: error.message,
+    });
+  }
+};
+exports.getOne = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const user = await userModel.findById(userId);
+    if (!user) {
+      return res.status(400).json({
+        message: "user already exist",
+      });
+    }
+
+    res.status(200).json({
+      message: "Get one user successfully",
+      data: user,
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: error.message,
+    });
+  }
+};
+exports.updateUser = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { firstName, lastName, email, password } = req.body;
+    const user = await userModel.findById(userId);
+    if (!user) {
+      return res.status(404).json({
+        message: "user not found",
+      });
+    }
+    const data = {
+      firstName,
+      lastName,
+      email: email.toLowerCase(),
+      password,
+    };
+    const updatedUser = await userModel.findByIdAndUpdate(userId, data, {
+      new: true,
+    });
+
+    return res.status(200).json({
+      message: "User updated successfully",
+      data: updatedUser,
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: error.message,
+    });
+  }
+};
+exports.changePassword = async (req, res) => {
+  try {
+    const decodedId = req.user.id;
+    const { oldPassword, newPassword, confirmPassword } = req.body;
+    const user = await userModel.findById(decodedId);
+    if (!user) {
+      return req.status(404).json({
+        message: `user not found`,
+      });
+    }
+    const check = await bcrypt.compare(oldPassword, user.password);
+    if (!check) {
+      return req.status(404).json({
+        message: `old password is incorrect`,
+      });
+    }
+    if (newPassword !== confirmPassword) {
+      return res.status(400).json({
+        message: `password mismatch`,
+      });
+    }
+    const salt = bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(newPassword, salt);
+
+    user.password = hashedPassword;
+    await user.save();
+    res.status(200).json({
+      message: `change password successfully`,
+    });
+  } catch (error) {
+    res.status(500).json({
       message: error.message,
     });
   }
