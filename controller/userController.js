@@ -44,55 +44,12 @@ exports.createUser = async (req, res) => {
     });
   }
 };
-
-exports.verifyUser = async (req, res) => {
-  try {
-    const { token } = params;
-    if (!token) {
-      return res.status(404).json({
-        message: "Token not found",
-      });
-    }
-
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const user = await userModel.findOne(decoded.id);
-
-    if (!user) {
-      return res.status(404).json({
-        message: "User not found",
-      });
-    }
-
-    if (user.isVerified) {
-      return res.status(400).json({
-        message: "User already verified",
-      });
-    }
-
-    user.isVerified = true;
-    await user.save();
-
-    return res.status(200).json({
-      message: "Verification successful",
-    });
-  } catch (error) {
-    if (error instanceof jwt.TokenExpiredError) {
-      return res.status(500).json({
-        message: "Time out, please proceed to login.",
-      });
-    }
-    res.status(500).json({
-      message: error.message,
-    });
-  }
-};
-
 exports.getAllUsers = async (req, res) => {
   try {
     const allusers = await userModel.find();
 
     res.status(200).json({
-      message: "Get All users successfully",
+      message: "users retrieved successfully",
       data: allusers,
     });
   } catch (error) {
@@ -107,7 +64,7 @@ exports.getOne = async (req, res) => {
     const user = await userModel.findById(userId);
     if (!user) {
       return res.status(400).json({
-        message: "user already exist",
+        message: "user does not exist",
       });
     }
 
@@ -148,6 +105,51 @@ exports.updateUser = async (req, res) => {
   } catch (error) {
     res.status(500).json({
       message: error.message,
+    });
+  }
+};
+
+exports.loginUser = async (req, res) => {
+  const { email, password } = req.body;
+  try {
+    const user = await userModel.findOne({ email: email.toLowerCase() });
+
+    if (!user) {
+      return res.status(404).json({
+        message: "user not found",
+      });
+    }
+
+    const checkPassword = await bcrypt.compare(password, user.password);
+    if (!checkPassword) {
+      return res.status(400).json({
+        message: "Invalid password",
+      });
+    }
+
+    // if (user.isVerified === false) {
+    //   return res.status(401).json({
+    //     message: 'please verify your account before logging in',
+    //   })
+    // }
+
+    const token = jwt.sign(
+      { id: user._id, email: user.email },
+      process.env.JWT_SECRET,
+      {
+        expiresIn: "30mins",
+      }
+    );
+
+    return res.status(200).json({
+      message: "login successfull",
+      data: user,
+      token: token,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      message: "Error logging in user",
+      error: error.message,
     });
   }
 };

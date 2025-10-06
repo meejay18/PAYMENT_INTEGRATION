@@ -6,6 +6,15 @@ const {
   getOne,
   updateUser,
 } = require("../controller/userController");
+const express = require("express");
+const { authentication } = require("../middleware/authentication");
+const {
+  createUser,
+  getAllUsers,
+  getOne,
+  updateUser,
+  loginUser,
+} = require("../controller/userController");
 
 const router = express.Router();
 
